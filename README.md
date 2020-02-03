@@ -86,7 +86,7 @@ Then, choose your "destiny"!:
 
 ### Dockerhub way
 
-Not so fun and **probably out of date**:
+Faster, not so fun and **probably out of date**:
 
 `docker pull carneiro/bigram-hadoop`
 
@@ -100,7 +100,11 @@ Dockerhub image site: [carneiro/bigram-hadoop](https://hub.docker.com/repository
 
 ### Dockerfile way
 
-The Dockfile is certainly updated on Github through [this link](https://github.com/bang/bigram-hadoop)
+The Dockfile is certainly updated, but very slow! 
+
+
+
+All stuff on [Github](https://github.com/bang/bigram-hadoop)
 
 
 
