@@ -77,7 +77,7 @@ First of all, **install docker!**
 
 
 
-Then, choose your "destiny"!:
+Then, choose your "destiny"!
 
 
 
