@@ -3,16 +3,15 @@
 A "bootstrap" image for pySpark developers.
 
 
+## Version
+
+0.0.7
+
+
 
 ## Introduction
 
 This is a repository for Dockerfile and some components necessary to build an image that provides a minimal of environment to work with Hadoop and pySpark. 
-
-
-
-## Version
-
-0.0.7
 
 
 
@@ -74,7 +73,7 @@ This is a repository for Dockerfile and some components necessary to build an im
 
 First of all, **install docker!**  
 
-* [Install docker on Ubuntu/Mint](https://docs.docker.com/install/linux/docker-ce/ubuntu/)
+* [How to install docker on Ubuntu/Mint](https://docs.docker.com/install/linux/docker-ce/ubuntu/)
 
 
 
