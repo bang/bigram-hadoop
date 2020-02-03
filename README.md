@@ -1,4 +1,4 @@
-# bigram-hadoop-docker
+# bigram-hadoop
 
 A "bootstrap" image for pySpark developers.
 
