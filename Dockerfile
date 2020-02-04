@@ -6,15 +6,24 @@ ENV HADOOP_HOME /opt/hadoop/current
 ENV JAVA_HOME /usr/lib/jvm/java-8-openjdk-amd64
 ENV SPARK_BASE /opt/spark
 ENV SPARK_HOME /opt/spark/current
+
+# configuring tz to avoid problems with interaction problems with tzdata package
+ENV TZ=America/Sao_Paulo 
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+
 # install packages
 RUN \
   apt-get update && apt-get install -y \
+  net-tools \
+  sudo \
   curl \
   ssh \
   rsync \
   vim \
   openjdk-8-jdk \
-  maven
+  maven \
+  jupyter-notebook
 
 
 # download and extract hadoop, set JAVA_HOME in hadoop-env.sh, update path
@@ -45,7 +54,7 @@ ADD start-hadoop.sh /start-hadoop.sh
 CMD bash start-hadoop.sh
 
 # create hduser user
-RUN useradd -m hduser
+RUN useradd -m -s /bin/bash hduser
 RUN groupadd hdfs
 RUN usermod -aG hdfs hduser
 RUN mkdir ~hduser/.ssh
@@ -85,6 +94,10 @@ RUN	echo "export JAVA_HOME=$JAVA_HOME" >> ~hduser/.bashrc \
 	&& echo "export SPARK_MAJOR_VERSION=2" >> ~hduser/.bashrc \
 	&& echo "export PATH=$PATH:$HADOOP_HOME/bin:$SPARK_HOME/bin" >> ~hduser/.bashrc
 
+# Install pyspark
+RUN pip install pyspark
+
+
 # expose various ports
-# EXPOSE 8088 50070 50075 50030 50060
+EXPOSE 8088 8888 5000 50070 50075 50030 50060
 
