@@ -1,4 +1,4 @@
-# bigram-hadoop-docker
+# bigram-hadoop
 
 A "bootstrap" image for pySpark developers.
 
@@ -86,7 +86,7 @@ Then, choose your "destiny"!:
 
 ### Dockerhub way
 
-Faster, not so fun and **probably out of date**:
+Faster, not so fun and **probably out of date**. But works! Just run *docker pull* as at bellow:
 
 `docker pull carneiro/bigram-hadoop`
 
@@ -96,11 +96,17 @@ Dockerhub image site: [carneiro/bigram-hadoop](https://hub.docker.com/repository
 
 
 
-
-
 ### Dockerfile way
 
-The Dockfile is certainly updated, but very slow! 
+The Dockfile is certainly updated, but is very slow to run! 
+
+
+
+What this will do?
+
+1. Install basic Linux image(Ubuntu18.04)
+2. Install Hadoop 2.5.8 basic stack(HDFS,Yarn,HDFS, Hive etc)
+3. Build Spark 2.4.4 using Maven and configure it
 
 
 
