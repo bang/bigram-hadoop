@@ -1,0 +1,25 @@
+#! /bin/bash
+mv /spark-$SPARK_VERSION/R $SPARK_HOME/
+mv /spark-$SPARK_VERSION/bin $SPARK_HOME/
+mv /spark-$SPARK_VERSION/conf $SPARK_HOME/
+mv /spark-$SPARK_VERSION/data $SPARK_HOME/
+mv /spark-$SPARK_VERSION/examples $SPARK_HOME/
+mv /spark-$SPARK_VERSION/graphx $SPARK_HOME/
+mv /spark-$SPARK_VERSION/launcher $SPARK_HOME/
+mv /spark-$SPARK_VERSION/mllib-local $SPARK_HOME/
+mv /spark-$SPARK_VERSION/python $SPARK_HOME/
+mv /spark-$SPARK_VERSION/resource-managers $SPARK_HOME/
+mv /spark-$SPARK_VERSION/sql $SPARK_HOME/
+mv /spark-$SPARK_VERSION/target $SPARK_HOME/
+mv /spark-$SPARK_VERSION/assembly $SPARK_HOME/
+mv /spark-$SPARK_VERSION/common $SPARK_HOME/
+mv /spark-$SPARK_VERSION/core $SPARK_HOME/
+mv /spark-$SPARK_VERSION/dev $SPARK_HOME/
+mv /spark-$SPARK_VERSION/external $SPARK_HOME/
+mv /spark-$SPARK_VERSION/hadoop-cloud $SPARK_HOME/
+mv /spark-$SPARK_VERSION/mllib $SPARK_HOME/
+mv /spark-$SPARK_VERSION/project $SPARK_HOME/
+mv /spark-$SPARK_VERSION/repl $SPARK_HOME/
+mv /spark-$SPARK_VERSION/sbin $SPARK_HOME/
+mv /spark-$SPARK_VERSION/streaming $SPARK_HOME/
+mv /spark-$SPARK_VERSION/tools $SPARK_HOME/

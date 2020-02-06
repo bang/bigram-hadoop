@@ -11,7 +11,6 @@ ENV SPARK_HOME /opt/spark/current
 ENV TZ=America/Sao_Paulo 
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
-
 # install packages
 RUN \
   apt-get update && apt-get install -y \
@@ -23,12 +22,13 @@ RUN \
   vim \
   openjdk-8-jdk \
   maven \
+  python3-pip \
   jupyter-notebook
 
 
 # download and extract hadoop, set JAVA_HOME in hadoop-env.sh, update path
 RUN curl -L \
-	--progress-bar 'http://mirror.nbtelecom.com.br/apache/hadoop/common/hadoop-2.8.5/hadoop-2.8.5.tar.gz' \
+	--progress-bar 'https://www-us.apache.org/dist/hadoop/common/hadoop-2.8.5/hadoop-2.8.5.tar.gz' \
 		-o "hadoop-2.8.5.tar.gz" 
 ENV HADOOP_VERSION=2.8.5
 RUN mkdir -p $HADOOP_BASE && tar -xzf hadoop-$HADOOP_VERSION.tar.gz -C $HADOOP_BASE \
@@ -49,20 +49,18 @@ ADD conf/*xml $HADOOP_HOME/etc/hadoop/
 # copy ssh config
 ADD conf/config /root/.ssh/config
 
-# copy script to start hadoop
-ADD start-hadoop.sh /start-hadoop.sh
-CMD bash start-hadoop.sh
 
 # create hduser user
-RUN useradd -m -s /bin/bash hduser
-RUN groupadd hdfs
-RUN usermod -aG hdfs hduser
-RUN mkdir ~hduser/.ssh
+RUN useradd -m -s /bin/bash hduser \
+	&& groupadd hdfs \
+	&& usermod -aG hdfs hduser \
+	&& usermod -aG sudo hduser \
+	&& mkdir ~hduser/.ssh
 
 # create ssh keys
-RUN  ssh-keygen -t rsa -P '' -f ~hduser/.ssh/id_rsa 
-RUN  cat ~/.ssh/id_rsa.pub >> ~hduser/.ssh/authorized_keys 
-RUN  chmod 0600 ~hduser/.ssh/authorized_keys
+RUN  ssh-keygen -t rsa -P '' -f ~hduser/.ssh/id_rsa \
+	&&  cat ~/.ssh/id_rsa.pub >> ~hduser/.ssh/authorized_keys \
+	&&  chmod 0600 ~hduser/.ssh/authorized_keys
 
 # download and build spark with maven with Hive and hive-trhift support 
 ENV MAVEN_OPTS="-Xmx2g -XX:ReservedCodeCacheSize=512m"
@@ -72,16 +70,20 @@ RUN curl -L \
 ENV SPARK_VERSION=2.4.4
 ENV SPARK_PART_VERSION=2.4
 ENV HADOOP_PART_VERSION=2.8
-RUN mkdir -p $SPARK_BASE && tar -xvf spark-$SPARK_VERSION.tgz
-RUN cd spark-$SPARK_VERSION \
+RUN mkdir -p $SPARK_BASE && tar -xzmvf spark-$SPARK_VERSION.tgz \
+	&& cd spark-$SPARK_VERSION \
 	&& ./build/mvn \
  	-Pyarn -Phadoop-$HADOOP_PART_VERSION -Dhadoop.version=$HADOOP_VERSION \
  	-Phive -Phive-thriftserver \
- 	-DskipTests clean package
+ 	-DskipTests clean package 
 
-# Moving Spark built to the base directory and configurating over /opt dir
-RUN mv spark-$SPARK_VERSION $SPARK_BASE
-RUN	cd $SPARK_BASE \
+# Moving Spark after build dirs to $SPARK_HOME
+# For unexplicable reason I have problems to move directories using
+# Dockerfile. So, I've created this script 
+ADD move-spark-dirs.sh /move-spark-dirs.sh
+CMD bash /move-spark-dirs.sh 
+
+RUN cd $SPARK_BASE \
  	&& ln -s spark-$SPARK_VERSION current \
  	&& cd / 
 
@@ -89,13 +91,19 @@ RUN	cd $SPARK_BASE \
 RUN	echo "export JAVA_HOME=$JAVA_HOME" >> ~hduser/.bashrc \
 	&& echo "export HADOOP_HOME=$HADOOP_HOME" >> ~hduser/.bashrc \
 	&& echo "alias python='python3.6'" >> ~hduser/.bashrc \
+	&& echo "alias pip='pip3'" >> ~hduser/.bashrc \
 	&& echo "export PYSPARK_PYTHON='python3.6'" >> ~hduser/.bashrc \
 	&& echo "export SPARK_HOME=$SPARK_HOME" >> ~hduser/.bashrc \
 	&& echo "export SPARK_MAJOR_VERSION=2" >> ~hduser/.bashrc \
 	&& echo "export PATH=$PATH:$HADOOP_HOME/bin:$SPARK_HOME/bin" >> ~hduser/.bashrc
 
+
 # Install pyspark
-RUN pip install pyspark
+RUN pip3 install pyspark
+
+# copy script to start hadoop
+ADD start-hadoop.sh /start-hadoop.sh
+RUN bash start-hadoop.sh &
 
 
 # expose various ports
