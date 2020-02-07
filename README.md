@@ -124,28 +124,39 @@ All stuff on [Github](https://github.com/bang/bigram-hadoop)
    ENV JAVA_HOME /usr/lib/jvm/java-8-openjdk-amd64
    ENV SPARK_BASE /opt/spark
    ENV SPARK_HOME /opt/spark/current
-   # install packages
+   
+   # configuring tz to avoid problems with interaction problems with tzdata package
+   ENV TZ=America/Sao_Paulo 
+   RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+   
+   # Install packages
    RUN \
      apt-get update && apt-get install -y \
+     net-tools \
+     sudo \
      curl \
      ssh \
      rsync \
      vim \
      openjdk-8-jdk \
-     maven
+     maven \
+     python3-pip \
+     jupyter-notebook
    
    
    # download and extract hadoop, set JAVA_HOME in hadoop-env.sh, update path
-   RUN curl -L \
-   	--progress-bar 'http://mirror.nbtelecom.com.br/apache/hadoop/common/hadoop-2.8.5/hadoop-2.8.5.tar.gz' \
-   		-o "hadoop-2.8.5.tar.gz" 
+   #RUN curl -L \
+   #	--progress-bar 'https://www-us.apache.org/dist/hadoop/common/hadoop-2.8.5/hadoop-2.8.5.tar.gz' \
+   #		-o "hadoop-2.8.5.tar.gz" 
    ENV HADOOP_VERSION=2.8.5
-   RUN mkdir -p $HADOOP_BASE && tar -xzf hadoop-$HADOOP_VERSION.tar.gz -C $HADOOP_BASE \
-   	&& cd $HADOOP_BASE \
-   	&& ln -s hadoop-$HADOOP_VERSION current \
-   	&& cd / \
-   	&& echo "export JAVA_HOME=$JAVA_HOME" >> $HADOOP_HOME/etc/hadoop/hadoop-env.sh \
-   	&& echo "PATH=$PATH:$HADOOP_HOME/bin" >> ~/.bashrc
+   COPY hadoop-$HADOOP_VERSION.tar.gz .
+   RUN mkdir -p $HADOOP_BASE \
+   	&& tar -xzvmf hadoop-$HADOOP_VERSION.tar.gz -C $HADOOP_BASE/ \
+    	&& cd $HADOOP_BASE \
+    	&& ln -s hadoop-$HADOOP_VERSION current \
+    	&& cd / \
+    	&& echo "export JAVA_HOME=$JAVA_HOME" >> $HADOOP_HOME/etc/hadoop/hadoop-env.sh \
+    	&& echo "PATH=$PATH:$HADOOP_HOME/bin" >> ~/.bashrc
    
    # create ssh keys
    RUN  ssh-keygen -t rsa -P '' -f ~/.ssh/id_rsa 
@@ -153,58 +164,85 @@ All stuff on [Github](https://github.com/bang/bigram-hadoop)
    RUN  chmod 0600 ~/.ssh/authorized_keys
    
    # copy hadoop configs
-   ADD conf/*xml $HADOOP_HOME/etc/hadoop/
+   COPY conf/*xml $HADOOP_HOME/etc/hadoop/
    
    # copy ssh config
-   ADD conf/config /root/.ssh/config
-   
-   # copy script to start hadoop
-   # ADD start-hadoop.sh /start-hadoop.sh
-   # CMD bash start-hadoop.sh
+   COPY conf/config /root/.ssh/config
    
    # create hduser user
-   RUN useradd -m hduser
-   RUN groupadd hdfs
-   RUN usermod -aG hdfs hduser
-   RUN mkdir ~hduser/.ssh
+   RUN useradd -m -s /bin/bash hduser \
+    	&& groupadd hdfs \
+    	&& usermod -aG hdfs hduser \
+    	&& usermod -aG sudo hduser \
+    	&& mkdir ~hduser/.ssh
    
    # create ssh keys
-   RUN  ssh-keygen -t rsa -P '' -f ~hduser/.ssh/id_rsa 
-   RUN  cat ~/.ssh/id_rsa.pub >> ~hduser/.ssh/authorized_keys 
-   RUN  chmod 0600 ~hduser/.ssh/authorized_keys
+   RUN  ssh-keygen -t rsa -P '' -f ~hduser/.ssh/id_rsa \
+    	&&  cat ~/.ssh/id_rsa.pub >> ~hduser/.ssh/authorized_keys \
+    	&&  chmod 0600 ~hduser/.ssh/authorized_keys
    
    # download and build spark with maven with Hive and hive-trhift support 
    ENV MAVEN_OPTS="-Xmx2g -XX:ReservedCodeCacheSize=512m"
-   RUN curl -L \
-   	--progress-bar 'http://mirror.nbtelecom.com.br/apache/spark/spark-2.4.4/spark-2.4.4.tgz' \
-   		-o "spark-2.4.4.tgz"
+   # RUN curl -L \
+   # # 	--progress-bar 'https://www-us.apache.org/dist/spark/spark-2.4.4/spark-2.4.4.tgz' \
+   # # 		-o "spark-2.4.4.tgz"
+   
    ENV SPARK_VERSION=2.4.4
+   
+   COPY spark-$SPARK_VERSION.tgz .
    ENV SPARK_PART_VERSION=2.4
    ENV HADOOP_PART_VERSION=2.8
-   RUN mkdir -p $SPARK_BASE && tar -xvf spark-$SPARK_VERSION.tgz
-   RUN cd spark-$SPARK_VERSION \
-   	&& ./build/mvn \
-    	-Pyarn -Phadoop-$HADOOP_PART_VERSION -Dhadoop.version=$HADOOP_VERSION \
-    	-Phive -Phive-thriftserver \
-    	-DskipTests clean package
    
-   # Moving Spark built to the base directory and configurating over /opt dir
-   RUN mv spark-$SPARK_VERSION $SPARK_BASE
-   RUN	cd $SPARK_BASE \
-    	&& ln -s spark-$SPARK_VERSION current \
-    	&& cd / 
+   RUN mkdir -p $SPARK_BASE && tar -xzmvf spark-$SPARK_VERSION.tgz \
+    	&& cd spark-$SPARK_VERSION \
+    	&& ./build/mvn \
+     	-Pyarn -Phadoop-$HADOOP_PART_VERSION -Dhadoop.version=$HADOOP_VERSION \
+     	-Phive -Phive-thriftserver \
+     	-DskipTests clean package 
+   
+   # Moving Spark after build dirs to $SPARK_HOME proving to be IMPOSSIBLE!
+   # ENV SPARK_VERSION=2.4.4
+   # ENV SPARK_BASE=/opt/spark
+   # ENV SPARK_HOME=$SPARK_BASE/current
+   RUN cd /
+   RUN tar -cBpvzf spark-$SPARK_VERSION.tar.gz spark-$SPARK_VERSION
+   #RUN rm -f spark-$SPARK_BASE/$SPARK_VERSION 
+   RUN tar -xzvmf spark-$SPARK_VERSION.tar.gz -C $SPARK_BASE/
+   RUN ln -s spark-$SPARK_VERSION $SPARK_HOME \
+     	&& cd / 
+   
+   # Install pyspark
+   RUN pip3 install pyspark
    
    # Configuring ~hduser/.bashrc
    RUN	echo "export JAVA_HOME=$JAVA_HOME" >> ~hduser/.bashrc \
-   	&& echo "export HADOOP_HOME=$HADOOP_HOME" >> ~hduser/.bashrc \
-   	&& echo "alias python='python3.6'" >> ~hduser/.bashrc \
-   	&& echo "export PYSPARK_PYTHON='python3.6'" >> ~hduser/.bashrc \
-   	&& echo "export SPARK_HOME=$SPARK_HOME" >> ~hduser/.bashrc \
-   	&& echo "export SPARK_MAJOR_VERSION=2" >> ~hduser/.bashrc \
-   	&& echo "export PATH=$PATH:$HADOOP_HOME/bin:$SPARK_HOME/bin" >> ~hduser/.bashrc
+    	&& echo "export HADOOP_HOME=$HADOOP_HOME" >> ~hduser/.bashrc \
+    	&& echo "alias python='python3.6'" >> ~hduser/.bashrc \
+    	&& echo "alias pip='pip3'" >> ~hduser/.bashrc \
+    	&& echo "export PYSPARK_PYTHON='python3.6'" >> ~hduser/.bashrc \
+    	&& echo "export SPARK_HOME=$SPARK_HOME" >> ~hduser/.bashrc \
+    	&& echo "export SPARK_MAJOR_VERSION=2" >> ~hduser/.bashrc \
+    	&& echo "export PATH=$PATH:$HADOOP_HOME/bin:$SPARK_HOME/bin" >> ~hduser/.bashrc
+   
+   # copy script to start hadoop
+   COPY start-hadoop.sh /start-hadoop.sh
+   RUN bash start-hadoop.sh &
+   
+   # Preparing HDFS for hduser
+   RUN $HADOOP_HOME/bin/hdfs dfs -mkdir -p /user/hduser
+   RUN $HADOOP_HOME/bin/hdfs dfs -chown hduser /user/hduser
+   
+   # Cleanup
+   RUN rm -f *.tar.gz *.tgz *.sh 
+   
+   # RUNNING jupyter-notebook
+   # as hduser ??????
+   
    
    # expose various ports
-   # EXPOSE 8088 50070 50075 50030 50060
+   EXPOSE 8088 8888 5000 50070 50075 50030 50060
+   
+   
    
    
    ```
@@ -246,41 +284,33 @@ All stuff on [Github](https://github.com/bang/bigram-hadoop)
      
 
 
-3. Accessing the container
+3. Running the container
 
-   `docker exec -it --privileged bigram-hadoop-container bash`
-
-   if doesn't work, try:
-
-   `docker run -it --rm bigram-hadoop`
+   `docker run --network host --user -p8888 -p8088  hduser -it  bigram-hadoop-container jupyter-notebook`
 
    
 
-5. create user project home in HDFS
+   You'll see something like this:
 
-   `hdfs dfs -mkdir -p /user/hduser`
-
-   
-
-6. Grant permissions on HDFS home dir
-
-   `hdfs dfs -chown hduser /user/hduser`
-
-   
-
-7. Change user to $NEW_USER(default = 'hduser')
-
-   `su - hduser`
-
-   
-
-8. Create a new jupyter notebook
-
-   `jupyter-notebook`
+   ```bash
+   WARNING: Published ports are discarded when using host network mode                                              
+   [I 15:36:47.100 NotebookApp] Writing notebook server cookie secret to /home/hduser/.local/share/jupyter/runtime/notebook_cookie_secret
+   [I 15:36:47.277 NotebookApp] Serving notebooks from local directory: /                                           
+   [I 15:36:47.277 NotebookApp] 0 active kernels                                                                    
+   [I 15:36:47.277 NotebookApp] The Jupyter Notebook is running at:                                                 
+   [I 15:36:47.277 NotebookApp] http://localhost:8888/?token=d940ac2eff1330843681bb360ffec84f604a3c43643723a1       
+   [I 15:36:47.277 NotebookApp] Use Control-C to stop this server and shut down all kernels (twice to skip confirmation).
+   [W 15:36:47.277 NotebookApp] No web browser found: could not locate runnable browser.                            
+   [C 15:36:47.277 NotebookApp]                                                                                     
+                                                                                                                    
+       Copy/paste this URL into your browser when you connect for the first time,                                   
+       to login with a token:                                                                                      
+           http://localhost:8888/?token=d940ac2eff1330843681bb360ffec84f604a3c43643723a1
+   ```
 
    
 
-9. Place this code at below and try to run it!
+   Now, copy the 'http' address, create a new Python3 notebook and place this code at below and try to run it!
 
    ```python
    import pyspark
@@ -307,6 +337,6 @@ All stuff on [Github](https://github.com/bang/bigram-hadoop)
    ```
 
    ## 
-   
+
    
 

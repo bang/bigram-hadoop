@@ -120,6 +120,7 @@ RUN rm -f *.tar.gz *.tgz *.sh
 # RUNNING jupyter-notebook
 # as hduser ??????
 
+
 # expose various ports
 EXPOSE 8088 8888 5000 50070 50075 50030 50060
 
