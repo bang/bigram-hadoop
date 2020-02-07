@@ -3,9 +3,11 @@ FROM ubuntu:18.04
 # set environment vars
 ENV HADOOP_BASE /opt/hadoop
 ENV HADOOP_HOME /opt/hadoop/current
+ENV HADOOP_VERSION=2.8.5
 ENV JAVA_HOME /usr/lib/jvm/java-8-openjdk-amd64
 ENV SPARK_BASE /opt/spark
 ENV SPARK_HOME /opt/spark/current
+ENV SPARK_VERSION=2.4.4
 
 # configuring tz to avoid problems with interaction problems with tzdata package
 ENV TZ=America/Sao_Paulo 
@@ -27,10 +29,10 @@ RUN \
 
 
 # download and extract hadoop, set JAVA_HOME in hadoop-env.sh, update path
-#RUN curl -L \
-#	--progress-bar 'https://www-us.apache.org/dist/hadoop/common/hadoop-2.8.5/hadoop-2.8.5.tar.gz' \
-#		-o "hadoop-2.8.5.tar.gz" 
-ENV HADOOP_VERSION=2.8.5
+RUN curl -L \
+	--progress-bar 'https://www-us.apache.org/dist/hadoop/common/hadoop-2.8.5/hadoop-2.8.5.tar.gz' \
+		-o "hadoop-$HADOOP_VERSION.tar.gz" 
+
 COPY hadoop-$HADOOP_VERSION.tar.gz .
 RUN mkdir -p $HADOOP_BASE \
 	&& tar -xzvmf hadoop-$HADOOP_VERSION.tar.gz -C $HADOOP_BASE/ \
@@ -65,11 +67,9 @@ RUN  ssh-keygen -t rsa -P '' -f ~hduser/.ssh/id_rsa \
 
 # download and build spark with maven with Hive and hive-trhift support 
 ENV MAVEN_OPTS="-Xmx2g -XX:ReservedCodeCacheSize=512m"
-# RUN curl -L \
-# # 	--progress-bar 'https://www-us.apache.org/dist/spark/spark-2.4.4/spark-2.4.4.tgz' \
-# # 		-o "spark-2.4.4.tgz"
-
-ENV SPARK_VERSION=2.4.4
+RUN curl -L \
+	--progress-bar 'https://www-us.apache.org/dist/spark/spark-2.4.4/spark-2.4.4.tgz' \
+		-o "spark-$SPARK_VERSION.tgz"
 
 COPY spark-$SPARK_VERSION.tgz .
 ENV SPARK_PART_VERSION=2.4
@@ -83,12 +83,8 @@ RUN mkdir -p $SPARK_BASE && tar -xzmvf spark-$SPARK_VERSION.tgz \
   	-DskipTests clean package 
 
 # Moving Spark after build dirs to $SPARK_HOME proving to be IMPOSSIBLE!
-# ENV SPARK_VERSION=2.4.4
-# ENV SPARK_BASE=/opt/spark
-# ENV SPARK_HOME=$SPARK_BASE/current
 RUN cd /
 RUN tar -cBpvzf spark-$SPARK_VERSION.tar.gz spark-$SPARK_VERSION
-#RUN rm -f spark-$SPARK_BASE/$SPARK_VERSION 
 RUN tar -xzvmf spark-$SPARK_VERSION.tar.gz -C $SPARK_BASE/
 RUN ln -s spark-$SPARK_VERSION $SPARK_HOME \
   	&& cd / 
@@ -116,10 +112,6 @@ RUN $HADOOP_HOME/bin/hdfs dfs -chown hduser /user/hduser
 
 # Cleanup
 RUN rm -f *.tar.gz *.tgz *.sh 
-
-# RUNNING jupyter-notebook
-# as hduser ??????
-
 
 # expose various ports
 EXPOSE 8088 8888 5000 50070 50075 50030 50060
