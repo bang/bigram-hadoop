@@ -17,7 +17,7 @@ This is a repository for Dockerfile and some components necessary to build an im
 
 ## Features
 
-* Hadoop 2.8.5
+* Hadoop 2.8.5(Mapreduce + YARN + HDFS)
 * Spark 2.4.4( Built using Maven because this combination of versions of Hadoop and Spark must be built )
 * Python 3.6
 * jupyter-notebook
