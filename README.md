@@ -5,7 +5,7 @@ A "bootstrap" image for pySpark developers.
 
 ## Version
 
-0.0.7
+0.0.8
 
 
 
