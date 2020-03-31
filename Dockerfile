@@ -4,12 +4,16 @@ FROM ubuntu:18.04
 ENV HADOOP_BASE /opt/hadoop
 ENV HADOOP_HOME /opt/hadoop/current
 ENV HADOOP_VERSION=2.8.5
+ENV HIVE_BASE=/opt/hive
+ENV HIVE_HOME=/opt/hive/current
 ENV JAVA_HOME /usr/lib/jvm/java-8-openjdk-amd64
 ENV SPARK_BASE /opt/spark
 ENV SPARK_HOME /opt/spark/current
 ENV SPARK_VERSION=2.4.4
 
-# configuring tz to avoid problems with interaction problems with tzdata package
+WORKDIR /root/install-stuff
+
+# configuring time zone to avoid interaction problems when installing tzdata package
 ENV TZ=America/Sao_Paulo 
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
@@ -31,9 +35,12 @@ RUN \
 # download and extract hadoop, set JAVA_HOME in hadoop-env.sh, update path
 RUN curl -L \
 	--progress-bar 'https://www-us.apache.org/dist/hadoop/common/hadoop-2.8.5/hadoop-2.8.5.tar.gz' \
-		-o "hadoop-$HADOOP_VERSION.tar.gz" 
+	-o "tarball/hadoop-$HADOOP_VERSION.tar.gz" 
 
-COPY hadoop-$HADOOP_VERSION.tar.gz .
+# temporary code. Just avoiding lots of http requests if you need to reinstall for any reason
+# COPY tarball/hadoop-$HADOOP_VERSION.tar.gz .
+
+# preparing the Hadoop location and environment
 RUN mkdir -p $HADOOP_BASE \
 	&& tar -xzvmf hadoop-$HADOOP_VERSION.tar.gz -C $HADOOP_BASE/ \
  	&& cd $HADOOP_BASE \
@@ -42,7 +49,7 @@ RUN mkdir -p $HADOOP_BASE \
  	&& echo "export JAVA_HOME=$JAVA_HOME" >> $HADOOP_HOME/etc/hadoop/hadoop-env.sh \
  	&& echo "PATH=$PATH:$HADOOP_HOME/bin" >> ~/.bashrc
 
-# create ssh keys
+# create ssh keys for root
 RUN  ssh-keygen -t rsa -P '' -f ~/.ssh/id_rsa 
 RUN  cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys 
 RUN  chmod 0600 ~/.ssh/authorized_keys
@@ -65,16 +72,17 @@ RUN  ssh-keygen -t rsa -P '' -f ~hduser/.ssh/id_rsa \
  	&&  cat ~/.ssh/id_rsa.pub >> ~hduser/.ssh/authorized_keys \
  	&&  chmod 0600 ~hduser/.ssh/authorized_keys
 
-# download and build spark with maven with Hive and hive-trhift support 
-ENV MAVEN_OPTS="-Xmx2g -XX:ReservedCodeCacheSize=512m"
+# download and build spark with maven, Hive and hive-trhift support 
 RUN curl -L \
-	--progress-bar 'https://www-us.apache.org/dist/spark/spark-2.4.4/spark-2.4.4.tgz' \
-		-o "spark-$SPARK_VERSION.tgz"
+    --progress-bar 'https://www-us.apache.org/dist/spark/spark-$SPARK_VERSION/spark-$SPARK_VERSION.tgz' \
+    -o "spark-$SPARK_VERSION.tgz"
 
 COPY spark-$SPARK_VERSION.tgz .
 ENV SPARK_PART_VERSION=2.4
 ENV HADOOP_PART_VERSION=2.8
 
+# Configuring jvm for maven avoiding annoying JVM memory problems
+ENV MAVEN_OPTS="-Xmx2g -XX:ReservedCodeCacheSize=512m"
 RUN mkdir -p $SPARK_BASE && tar -xzmvf spark-$SPARK_VERSION.tgz \
  	&& cd spark-$SPARK_VERSION \
  	&& ./build/mvn \
@@ -102,17 +110,18 @@ RUN	echo "export JAVA_HOME=$JAVA_HOME" >> ~hduser/.bashrc \
  	&& echo "export SPARK_MAJOR_VERSION=2" >> ~hduser/.bashrc \
  	&& echo "export PATH=$PATH:$HADOOP_HOME/bin:$SPARK_HOME/bin" >> ~hduser/.bashrc
 
-# copy script to start hadoop
-COPY start-hadoop.sh /start-hadoop.sh
-RUN bash start-hadoop.sh &
-
 # Preparing HDFS for hduser
-RUN $HADOOP_HOME/bin/hdfs dfs -mkdir -p /user/hduser
-RUN $HADOOP_HOME/bin/hdfs dfs -chown hduser /user/hduser
+# RUN $HADOOP_HOME/bin/hdfs dfs -mkdir -p /user/hduser
+# RUN $HADOOP_HOME/bin/hdfs dfs -chown hduser /user/hduser
 
 # Cleanup
-RUN rm -f *.tar.gz *.tgz *.sh 
+RUN rm -rf *.tar.gz *.tgz *.sh spark-$SPARK_VERSION
 
 # expose various ports
-EXPOSE 8088 8888 5000 50070 50075 50030 50060
+EXPOSE 8088:8088 8888:8888 50070:50070 50075:50075 50030:50030 50060:50060 10000:10000
+
+# copy script to start hadoop
+COPY start-hadoop.sh .
+
+
 

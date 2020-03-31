@@ -3,4 +3,9 @@
         <name>mapreduce.framework.name</name>
         <value>yarn</value>
     </property>
+
+	<property>
+	    <name>mapreduce.jobtracker.address</name>
+	    <value>localhost:9101</value>
+	  </property>
 </configuration>
